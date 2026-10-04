@@ -8,14 +8,77 @@ within a selected storage scope.
 ## Install
 
 ```sh
-npm install wanted
+npm install @ye-yu/wanted
 ```
 
-The package is an ES module:
+## Quick start
+
+Define your singleton classes by extending `Wantable` or `WantableAsync`
 
 ```ts
-import { Wantable, want } from "wanted";
+import { Wantable, WantableAsync, want, wantAsync } from "@ye-yu/wanted";
+class CommonLogger extends Wantable() {
+  want() {}
+}
+
+class IdProvider extends Wantable() {
+  logger!: CommonLogger
+  want() {
+    this.logger = want(CommonLogger)
+  }
+  newId() {
+    return crypto.randomUUID()
+  }
+}
+
+class DatabaseService extends Wantable() {
+  logger!: CommonLogger
+  connected = false
+
+  async connect() {
+    // template
+  }
+  async wantAsync() {
+    this.logger = want(CommonLogger)
+    await this.connect()
+  }
+}
+
+// or extend another plain class or wantable
+class UserService extends WantableAsync(IdProvider) {
+  database!: DatabaseService
+  async wantAsync() {
+    super.want()
+    this.database = await wantAsync(DatabaseProvider)
+  }
+  async createNewUser(userData: UserData) {
+    const id = this.newId()
+    return await this.database.create({ ...userData, id })
+  }
+}
 ```
+
+Use your singleton everywhere!
+
+```ts
+async function getUserData() {
+  const userService = await wantAsync(UserService)
+  const logger = want(CommontLogger)
+  logger.info("getUserData")
+  return await userService.getUserData()
+}
+
+async function compareLogger() {
+  const userService = await wantAsync(UserService)
+  const databaseService = await wantAsync(DatabaseService)
+
+  console.log(
+    "same logger instance", 
+    // true!
+    userService.logger === databaseService.logger)
+}
+```
+
 
 ## Define and request dependencies
 
@@ -24,7 +87,7 @@ first created in a storage scope; subsequent requests from that scope return
 the same instance without running setup again.
 
 ```ts
-import { Wantable, want } from "wanted";
+import { Wantable, want } from "@ye-yu/wanted";
 
 class Logger extends Wantable() {
   want() {
@@ -51,7 +114,7 @@ console.log(first === second); // true
 console.log(first.logger === want(Logger)); // true
 ```
 
-Each class must have a no-argument constructor. Dependencies are requested
+Each class MUST have a no-argument constructor. Dependencies are requested
 inside `want()` by calling `want(DependencyClass)`. The same dependency class
 requested by different services resolves to the same instance when both
 requests use the same storage.
@@ -60,7 +123,7 @@ For asynchronous initialization, extend `WantableAsync()` and implement
 `wantAsync()`. Request the instance with `await wantAsync(...)`:
 
 ```ts
-import { WantableAsync, wantAsync } from "wanted";
+import { WantableAsync, wantAsync } from "@ye-yu/wanted";
 
 class Database extends WantableAsync() {
   connected = false;
@@ -68,6 +131,8 @@ class Database extends WantableAsync() {
   async wantAsync() {
     await connectToDatabase();
     this.connected = true;
+    // you may also call `want(Something)` or `wantAsync(SomethingAsync)` here
+    // ...
   }
 }
 
@@ -88,6 +153,8 @@ class ReportService extends WantableAsync() {
 }
 ```
 
+## Define wantable extending from another class
+
 `Wantable()` and `WantableAsync()` can also take a parent class. This lets a
 wantable class inherit a pre-existing implementation:
 
@@ -105,11 +172,69 @@ class AppLogger extends Wantable(BaseLogger) {
 }
 ```
 
+The parent class can have a constructor of any arguments.
+You may supply the super constructor arguments in your wantable 
+class constructor.
+
+```ts
+import { Wantable } from "@ye-yu/wanted";
+
+class BaseLogger {
+  readonly prefix: string
+  constructor(prefix = "") {
+    this.prefix = prefix;
+  }
+}
+
+class UserLogger extends Wantable(BaseLogger) {
+  constructor() {
+    super("user")
+  }
+  want() {
+    // your dependencies
+  }
+}
+
+```
+
+## `Wantable` too verbose with `want()` method?
+You can skip `want` implementation and directly `want` from constructor. However,
+you can only want a sync wantable and never an async constructor.
+
+You can perform this using `WantableByConstructor`.
+
+```ts
+import { WantableByConstructor } from "@ye-yu/wanted";
+
+class CommonLogger extends WantableByConstructor() {
+  constructor() {
+    this.target = "cli"
+  }
+
+  // noop want is already supplied
+  // want() {}
+}
+
+class UserService extends WantableByConstructor() {
+  readonly logger: CommonLogger;
+  constructor() {
+    this.logger = want(CommonLogger)
+    this.logger.info("UserService")
+  }
+}
+
+// or directly
+
+class DatabaseService extends WantableByConstructor() {
+  readonly logger = want(CommonLogger)
+}
+```
+
 ## GLOBAL and ASYNC_LOCAL storage
 
 The second argument to `want()` or `wantAsync()` selects where the singleton is
 stored. It accepts the string `"GLOBAL"` or `"ASYNC_LOCAL"` and defaults to
-`"GLOBAL"`.
+`"GLOBAL"`. You can access this enum by importing the object `WANT_FROM`.
 
 | Storage | Lifetime and sharing |
 | --- | --- |
@@ -142,7 +267,8 @@ import {
   Wantable,
   want,
   withAsyncLocalWantedStorage,
-} from "wanted";
+  WANT_FROM,
+} from "@ye-yu/wanted";
 
 class RequestContext extends Wantable() {
   requestId = "";
@@ -154,7 +280,7 @@ class RequestContext extends Wantable() {
 
 function handleRequest() {
   withAsyncLocalWantedStorage(async () => {
-    const context = want(RequestContext, "ASYNC_LOCAL");
+    const context = want(RequestContext, WANT_FROM.ASYNC_LOCAL);
     console.log(context.requestId);
 
     // Async work started here continues in this async-local scope.
@@ -182,7 +308,7 @@ class RequestService extends Wantable() {
 }
 
 withAsyncLocalWantedStorage(() => {
-  const service = want(RequestService, "ASYNC_LOCAL");
+  const service = want(RequestService, WANT_FROM.ASYNC_LOCAL);
   // service is ASYNC_LOCAL; service.logger is GLOBAL.
 });
 ```
@@ -234,3 +360,8 @@ The same resolution behavior is available to `WantableAsync()` classes using
   a wantable instance. It accepts the same storage argument.
 - `withAsyncLocalWantedStorage(callback)`: run a callback in a new async-local
   wanted-storage scope. Use it to establish request/operation isolation.
+
+## Roadmap
+- [ ] Allows GLOBAL wantables to want from ASYNC_LOCAL by keeping proxies
+- [ ] Allows `wantOptional()` to want form ASYNC_LOCAL to return null on outside
+of async context

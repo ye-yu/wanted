@@ -1,8 +1,27 @@
 import { resolveStorage, WANT_FROM, WANTED_INSTANCE_SYMBOL, WANTED_IS_PROXY_SYMBOL } from "./storage.ts";
 import type { AnyArgsConstructor, NoArgsConstructor, WantableAsyncConstructor, WantableConstructor } from "./types.ts";
 
+/**
+ * Creates base class that requires `want` implementation
+ */
 export function Wantable<Parent = unknown>(parent?: AnyArgsConstructor<Parent>): WantableConstructor<Parent> {
   return (parent ?? class { }) as any
+}
+
+class NoopWant {
+  want() {} // noop
+}
+
+/**
+ * Creates base class can be instantantiated by constructor only
+ */
+export function WantableByConstructor<Parent = unknown>(parent?: AnyArgsConstructor<Parent>): WantableConstructor<Parent> {
+  if (parent) {
+    return Wantable(class extends (parent as any) {
+      want() {} // noop
+    }) as any
+  }
+  return Wantable(NoopWant) as any
 }
 
 export function WantableAsync<Parent = unknown>(parent?: AnyArgsConstructor<Parent>): WantableAsyncConstructor<Parent> {
