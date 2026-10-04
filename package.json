@@ -1,0 +1,30 @@
+{
+  "name": "wanted",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "build": "tsc -p tsconfig.build.json && rm ./dist/types.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ye-yu/wanted.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ye-yu/wanted/issues"
+  },
+  "homepage": "https://github.com/ye-yu/wanted#readme",
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "typescript": "^7.1.0-dev.20260926.1"
+  }
+}
