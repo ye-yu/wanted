@@ -1,5 +1,5 @@
 {
-  "name": "wanted",
+  "name": "@ye-yu/wanted",
   "version": "0.0.1",
   "description": "a small dependency-injection helper for JavaScript and TypeScript",
   "main": "dist/index.js",
