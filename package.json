@@ -1,7 +1,7 @@
 {
   "name": "wanted",
-  "version": "1.0.0",
-  "description": "",
+  "version": "0.0.1",
+  "description": "a small dependency-injection helper for JavaScript and TypeScript",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
@@ -16,7 +16,14 @@
     "type": "git",
     "url": "git+https://github.com/ye-yu/wanted.git"
   },
-  "keywords": [],
+  "keywords": [
+    "dependency-injection",
+    "di",
+    "singleton",
+    "async-local-storage",
+    "nodejs",
+    "typescript"
+  ],
   "author": "",
   "license": "ISC",
   "bugs": {
