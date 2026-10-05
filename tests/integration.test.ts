@@ -102,6 +102,11 @@ function newServer() {
         return
       }
       const sessionIdProvider = want(SessionIdProvider, WANT_FROM.ASYNC_LOCAL)
+      if (!sessionIdProvider) {
+        res.writeHead(500, 'Server Error')
+        res.end()
+        return
+      }
       sessionIdProvider.logSessionId(res)
       sessionIdProvider.logInstanceToResponse(res)
 

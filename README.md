@@ -360,8 +360,3 @@ The same resolution behavior is available to `WantableAsync()` classes using
   a wantable instance. It accepts the same storage argument.
 - `withAsyncLocalWantedStorage(callback)`: run a callback in a new async-local
   wanted-storage scope. Use it to establish request/operation isolation.
-
-## Roadmap
-- [ ] Allows GLOBAL wantables to want from ASYNC_LOCAL by keeping proxies
-- [ ] Allows `wantOptional()` to want form ASYNC_LOCAL to return null on outside
-of async context

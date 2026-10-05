@@ -1,5 +1,5 @@
 import { beforeEach, describe, it } from "node:test";
-import { want, Wantable } from "../src/want.ts";
+import { want, Wantable, WantableByConstructor } from "../src/want.ts";
 import assert from "assert";
 import { clearAllWants, WANTED_IS_PROXY_SYMBOL } from "../src/storage.ts";
 
@@ -15,6 +15,8 @@ describe('want sync', () => {
   it('should be able to resolve single-level nested dependencies', () => {
     const storage = want(Storage)
     const idGenerator = want(IdGenerator)
+    assert.ok(storage.logger)
+    assert.ok(idGenerator.logger)
     assert.strictEqual(storage.logger, idGenerator.logger)
 
     const storageLoggerIsProxy = Reflect.get(storage.logger, WANTED_IS_PROXY_SYMBOL)
@@ -29,6 +31,18 @@ describe('want sync', () => {
     const nameProvider = want(NameProvider)
     assert.strictEqual(idProvider.nameProvider, nameProvider)
     assert.strictEqual(nameProvider.idProvider, idProvider)
+
+    const nameProviderIsProxy = Reflect.get(idProvider.nameProvider, WANTED_IS_PROXY_SYMBOL)
+    assert.ok(!nameProviderIsProxy)
+
+    const idProviderIsProxy = Reflect.get(nameProvider.idProvider, WANTED_IS_PROXY_SYMBOL)
+    assert.ok(!idProviderIsProxy)
+  })
+
+  it('should be able to want by constructor', () => {
+    const commonMath = want(CommonMath)
+    assert.strictEqual(commonMath.base.add(1, 2), commonMath.multiply.add(1, 2))
+    assert.strictEqual(commonMath.multiply.multiply(1, 2), 2)
   })
 })
 
@@ -99,5 +113,22 @@ class TypeProvider {
 }
 
 class SubTypeProvider extends Wantable(TypeProvider) {
-  want() {}
+  want() { }
+}
+
+class BaseMath extends WantableByConstructor() {
+  add(left: number, right: number) {
+    return left + right
+  }
+}
+
+class MultipliableMath extends WantableByConstructor(BaseMath) {
+  multiply(left: number, right: number) {
+    return left * right
+  }
+}
+
+class CommonMath extends WantableByConstructor() {
+  base = want(BaseMath)
+  multiply = want(MultipliableMath)
 }
